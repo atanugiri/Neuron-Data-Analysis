@@ -1,4 +1,9 @@
-*.mat
 *.fig
 *.pdf
 .DS_Store
+*.asv
+doubletPlotTest.mat
+spikesData.mat
+Boxplots/
+Figures/
+tripletPlots/
