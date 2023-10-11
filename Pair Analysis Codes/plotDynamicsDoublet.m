@@ -9,7 +9,7 @@ function [fitresult, gof, xnew, ynew, varargout] = plotDynamicsDoublet( ...
 
 % This is for test
 % loadFile1 = load('spikesData.mat');
-% xArray = loadFile1.PLSspikes;
+% xArray = loadFile1.MATRIXspikes;
 % yArray = loadFile1.FSIspikes;
 % bintime = 1.33;
 % fitTypeChoice = 1;

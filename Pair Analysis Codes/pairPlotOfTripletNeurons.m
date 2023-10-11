@@ -1,7 +1,7 @@
 % Date: 09/05/2023
 % Coefficient Plot of paired neurons in triplet
 
-twdbs = load("twdbs.mat");
+% twdbs = load("twdbs.mat");
 
 % Input struct of twdbs
 dataTable = input("Enter the struct you want for analysis: 'twdb_control', " + ...

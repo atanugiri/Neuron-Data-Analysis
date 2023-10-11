@@ -1,7 +1,8 @@
 % Date: 08/04/2023
 % Author: Atanu Giri
 
-% This script will plot coefficients of paired neurons of FSI and PLS
+% This script will plot coefficients of paired neurons of FSI and PLS which
+% are part of PLS-FSI-Striosome triplets
 
 clearvars -except twdbs; clc;
 
