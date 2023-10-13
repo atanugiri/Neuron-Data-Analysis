@@ -32,6 +32,15 @@ if strcmpi(plotType, 'PLSvsFSI')
     coeff2 = 'b';
     gof = 'gofArray_PLSvsFSI';
 
+elseif strcmpi(plotType, 'FSIvsSTRIO')
+    fitResultArray_Pair = 'fitResultArray_FSIvsSTRIO';
+    rValArray_Pairs = 'rValArray_FSIvsSTRIO';
+    pValArray_Pairs = 'pValArray_FSIvsSTRIO';
+    neuronType1 = 'fsiIndex';
+    neuronType2 = 'striosomeIndex';
+    coeff1 = 'a';
+    coeff2 = 'b';
+    gof = 'gofArray_FSIvsSTRIO';
 
 elseif strcmpi(plotType, 'PLSvsSTRIO')
     fitResultArray_Pair = 'fitResultArray_PLSvsSTRIO';
@@ -90,7 +99,7 @@ for group = 1:numel(fitData)
                 Rstat{group} = [Rstat{group}; fitData{group}.(rValArray_Pairs)(row)];
                 Pstat{group} = [Pstat{group}; fitData{group}.(pValArray_Pairs)(row)];
                 currentGof = fitData{group}.(gof){row};
-                allGOF{group} = [allGOF{group}; currentGof.rsquare]; 
+                allGOF{group} = [allGOF{group}; currentGof.rsquare];
             else
                 continue
             end
