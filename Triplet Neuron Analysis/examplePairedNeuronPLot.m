@@ -1,5 +1,5 @@
 % Date: 09/27/2023
-% Coefficient Plot of single paired neurons in triplet
+% Firing rate plot of single paired neurons in triplet
 
 % twdbs = load("twdbs.mat");
 

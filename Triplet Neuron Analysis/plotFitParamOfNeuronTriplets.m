@@ -11,7 +11,7 @@ databaseDataLabel = {'control Data', 'stress Data', 'stress2 Data'};
 pairsInTriplet = extractPairedNeuronsInTriplet;
 
 % Invoke function extarctFitParameters
-[coeffA, coeffB, allGOF] = extarctLinearFitParameters(pairsInTriplet, twdbs);
+[coeffA, coeffB, allGOF] = extractLinearFitParameters(pairsInTriplet, twdbs);
 
 [aData, avgA, sdErrA] = extractPlotValues(coeffA);
 [bData, avgB, sdErrB] = extractPlotValues(coeffB);
@@ -32,7 +32,7 @@ sdErrBsorted = sortData(sdErrB);
 sdErrGOFsorted = sortData(sdErrGof);
 
 
-
+% a, b plot
 for pairType = 1:3
     figure(pairType);
     set(gcf, 'Windowstyle', 'docked');
@@ -52,9 +52,11 @@ for pairType = 1:3
         'k.', 'LineWidth', 1.5);
     myStat(bDataSorted{pairType}, avgBsorted{pairType}, databaseDataLabel);
     hold off;
+    sgtitle(pairsTypeLabel{pairType}, 'FontSize', 20);
 
 end
 
+% R^2 plot
 for pairType = 1:3
     figure(pairType+3);
     set(gcf, 'Windowstyle', 'docked');
@@ -65,14 +67,26 @@ for pairType = 1:3
         'k.', 'LineWidth', 1.5);
     myStat(gofDataSorted{pairType}, avgGOFsorted{pairType}, databaseDataLabel);
     hold off;
+    title(pairsTypeLabel{pairType}, 'FontSize', 20);
+
+end
+
+% Histogram
+for pairType = 1:3
+    figure(pairType+6);
+    set(gcf, 'Windowstyle', 'docked');
+    for group = 1:3
+        subplot(1,3,group);
+        histogram(aDataSorted{pairType}{group}, 10);
+        title(databaseDataLabel{group}, 'FontSize', 15);
+    end
+    sgtitle(pairsTypeLabel{pairType}, 'FontSize', 20);
 end
 
 
 %% Description of sortData
 function sortedData = sortData(data)
-
 sortedData = cell(1,3);
-
 if iscell(data{1})
     for pairType = 1:3
         for group = 1:3
@@ -108,26 +122,4 @@ for group = 1:3
     end
 
 end
-end
-
-%% Description of myStat
-function myStat(coeffientData, averageData, databaseDataLabel)
-
-% Perform two-sample t-tests and print on the figure
-[~, pValue1] = ttest2(coeffientData{1}, coeffientData{2});
-[~, pValue2] = ttest2(coeffientData{1}, coeffientData{3});
-text(2, 0.9*max(averageData), ['p = ', num2str(pValue1)], 'Interpreter', 'latex', ...
-    'FontSize', 20, 'FontWeight', 'bold', 'HorizontalAlignment', 'center', ...
-    'Rotation', 45, 'Color', [0.8 0 0]);
-text(3, 0.9*max(averageData), ['p = ', num2str(pValue2)], 'Interpreter', 'latex', ...
-    'FontSize', 20, 'FontWeight', 'bold', 'HorizontalAlignment', 'center', ...
-    'Rotation', 45, 'Color', [0.8 0 0]);
-
-xticks(1:numel(databaseDataLabel));
-xticklabels(databaseDataLabel);
-xtickangle(45);
-text(3.5, max(averageData), sprintf('n_{Control} = %d\n n_{Stress} = %d\n n_{Stress2} = %d', ...
-    numel(coeffientData{1}), numel(coeffientData{2}), numel(coeffientData{3})), ...
-    'FontSize', 30, 'FontWeight', 'bold');
-
 end
