@@ -11,91 +11,112 @@ database = twdbs.(sprintf('%s', dataTable));
 
 if strcmpi(dataTable, 'twdb_control')
     loadFile = load('pairsTableControl.mat');
-    [~, fileName] = fileparts('pairsTableControl');
+    match = regexp('pairsTableControl', 'pairsTable(.+)', 'tokens', 'once');
+
 elseif strcmpi(dataTable, 'twdb_stress')
     loadFile = load('pairsTableStress.mat');
-    [~, fileName] = fileparts('pairsTableStress');
+    match = regexp('pairsTableStress', 'pairsTable(.+)', 'tokens', 'once');
+
 else
     loadFile = load('pairsTableStress2.mat');
-    [~, fileName] = fileparts('pairsTableStress2');
+    match = regexp('pairsTableStress2', 'pairsTable(.+)', 'tokens', 'once');
+
 end
 
-fsiMatrixPairs = loadFile.pairsTable{2}; % Carefully choose pair
+% Select which pair you want to plot
+neuronPair = input("Which pair do you want to plot ('fsiStriosomePairs' or 'fsiMatrixPairs')? ",'s');
+
+if strcmpi(neuronPair, 'fsiStriosomePairs')
+    pairsToAnalyze = loadFile.pairsTable{1};
+    N2label = pairsToAnalyze.Properties.VariableNames{2}(1:9);
+
+elseif strcmpi(neuronPair, 'fsiMatrixPairs')
+    pairsToAnalyze = loadFile.pairsTable{2};
+    N2label = pairsToAnalyze.Properties.VariableNames{2}(1:6);
+
+else
+    sprintf('Check input.')
+end
+
 
 %% Analysis
-fitresultArray = cell(size(fsiMatrixPairs, 1), 1);
-gofArray = cell(size(fsiMatrixPairs, 1), 1);
-xValArray = cell(size(fsiMatrixPairs, 1), 1);
-yValArray = cell(size(fsiMatrixPairs, 1), 1);
-rValArray = zeros(size(fsiMatrixPairs, 1), 1);
-pValArray = zeros(size(fsiMatrixPairs, 1), 1);
+coeffA = NaN(size(pairsToAnalyze, 1), 1);
+coeffB = NaN(size(pairsToAnalyze, 1), 1);
+allGOF = NaN(size(pairsToAnalyze, 1), 1);
+xValArray = cell(size(pairsToAnalyze, 1), 1);
+yValArray = cell(size(pairsToAnalyze, 1), 1);
+RvalArray = NaN(size(pairsToAnalyze, 1), 1);
 
-bestBin = 1.33;
-fitTypeChoice = 1;
-
-for row = 1:size(fsiMatrixPairs,1)
-    FSIindex = fsiMatrixPairs.fsiIndex(row);
-    MATRIXindex = fsiMatrixPairs.matrixIndex(row);
+for row = 1:size(pairsToAnalyze,1)
+    FSIindex = pairsToAnalyze.(1)(row);
+    N2index = pairsToAnalyze.(2)(row);
 
     FSIspikes = database(FSIindex).trial_spikes;
-    MATRIXspikes = database(MATRIXindex).trial_spikes;
+    N2spikes = database(N2index).trial_spikes;
 
     % Get the output values
     try
         [fitresult, gof, xnew, ynew, Rval, Pval] = plotDynamicsDoublet( ...
-            MATRIXspikes, FSIspikes, bestBin, fitTypeChoice);
+            FSIspikes, N2spikes, 1.33, 1);
 
         % Store the result in the array
-        fitresultArray{row} = fitresult;
-        gofArray{row} = gof;
+        coeffA(row) = fitresult.a;
+        coeffB(row) = fitresult.b;
+        allGOF(row) = gof.rsquare;
         xValArray{row} = xnew;
         yValArray{row} = ynew;
-        rValArray(row) = Rval;
-        pValArray(row) = Pval;
-
+        RvalArray(row) = Rval;
     catch
         fprintf('Skipping iteration %d due to an error.\n', row);
     end
 end
 
+% If you want negative slope
+negR = RvalArray <= 0;
+coeffA = coeffA(negR);
+coeffB = coeffB(negR);
+allGOF = allGOF(negR);
+xValArray = xValArray(negR);
+yValArray = yValArray(negR);
+
+
 %% Plotting
 % Create a PDF file for saving the figures
-pdf_file = 'doublet_plots_FsivsMstrixStress.pdf'; % User defined
+pdf_file = sprintf('doublet_plots_Fsivs%s%s.pdf', N2label, match{1});
 
 % Initialize the subplot counter
 subplot_count = 0;
 % Create a new figure
 figure('Position', [100, 100, 1200, 800]);
 
-for row = 1:size(fitresultArray, 1)
+for row = 1:size(coeffA, 1)
     try
         % Increase subplot_count
         subplot_count = subplot_count+1;
         subplot(5, 5, subplot_count);
-        fitResult = fitresultArray{row};
-        a = fitResult.a;
-        b = fitResult.b;
         x = xValArray{row};
         y = yValArray{row};
 
         plot(x, y, 'o', 'Color', 'blue');
         hold on;
         x_fit = linspace(min(x), max(x), 100);
-        y_fit = a*x_fit + b;
+        y_fit = coeffA(row)*x_fit + coeffB(row);
         plot(x_fit, y_fit, 'LineWidth', 2, 'Color', 'blue');
         hold off;
-        xlabel("Matrix Firing Rate","Interpreter","latex");
-        ylabel("FSI Firing Rate","Interpreter","latex");
-        title(sprintf("Matrix: %d, FSI: %d", fsiMatrixPairs.matrixIndex(row), ...
-            fsiMatrixPairs.fsiIndex(row)));
+        xlabel("FSI Firing Rate", "Interpreter","latex");
+        ylabel(sprintf("%s Firing Rate", N2label),"Interpreter","latex");
+
+        title(sprintf("FSI: %d, %s: %d\n R^2 = %.2f, a = %.2f, b = %.2f", ...
+        pairsToAnalyze.(1)(row), N2label, pairsToAnalyze.(2)(row), ...
+        allGOF(row), coeffA(row), coeffB(row)));
 
     catch
         fprintf("Plotting error\n");
     end
 
     % Save the figure as a PDF file
-    if subplot_count == 25 || row == size(fitresultArray, 1)
-        sgtitle("Matrix vs FSI Firing Rate: Stress");
+    if subplot_count == 25 || row == size(coeffA, 1)
+        sgtitle(sprintf("FSI vs %s Firing Rate: Stress", N2label));
         % Save the current page and reset the subplot counter
         exportgraphics(gcf, pdf_file, 'ContentType', 'vector', 'Append', true);
         subplot_count = 0;
