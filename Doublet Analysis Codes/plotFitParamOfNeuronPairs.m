@@ -23,36 +23,41 @@ pairData{3} = load('pairsTableStress2.mat');
 coeffA = cell(1, 3);
 coeffB = cell(1, 3);
 allGOF = cell(1, 3);
+RvalArray = cell(1, 3);
 
 for group = 1:3
     loadFile = pairData{group};
-    fsiMatrixPairs = loadFile.pairsTable{2}; % Carefully choose pair
+    fsiStrioPairs = loadFile.pairsTable{1}; % Carefully choose pair
 
-    bestBin = 1.33;
-    fitTypeChoice = 1;
-
-    for row = 1:size(fsiMatrixPairs,1)
-        FSIindex = fsiMatrixPairs.fsiIndex(row);
-        MATRIXindex = fsiMatrixPairs.matrixIndex(row);
+    for row = 1:size(fsiStrioPairs,1)
+        FSIindex = fsiStrioPairs.(1)(row);
+        STRIOindex = fsiStrioPairs.(2)(row);
 
         data = databaseData{group};
         FSIspikes = data(FSIindex).trial_spikes;
-        MATRIXspikes = data(MATRIXindex).trial_spikes;
+        STRIOspikes = data(STRIOindex).trial_spikes;
 
         % Get the output values
         try
             [fitresult, gof, xnew, ynew, Rval, Pval] = plotDynamicsDoublet( ...
-                MATRIXspikes, FSIspikes, bestBin, fitTypeChoice);
-            
+                FSIspikes, STRIOspikes, 1.33, 1);
+
             coeffA{group}(row) = fitresult.a;
             coeffB{group}(row) = fitresult.b;
             allGOF{group}(row) = gof.rsquare;
+            RvalArray{group}(row) = Rval;
 
         catch
             fprintf('Skipping iteration %d due to an error.\n', row);
         end
 
     end % neuron pair loop
+
+    % If you want negative slope
+    negR = RvalArray{group} <= 0;
+    coeffA{group} = coeffA{group}(negR);
+    coeffB{group} = coeffB{group}(negR);
+    allGOF{group} = allGOF{group}(negR);
 
 end % database loop
 
@@ -71,59 +76,40 @@ sdErrB = zeros(1,3);
 sdErrGOF = zeros(1,3);
 
 for group = 1:3
-   aData{group} = coeffA{group}(coeffA{group} ~= 0);
-   bData{group} = coeffB{group}(coeffB{group} ~= 0);
-   gofData{group} = allGOF{group}(allGOF{group} > 0 & allGOF{group} <= 1);
+    aData{group} = coeffA{group}(coeffA{group} ~= 0);
+    bData{group} = coeffB{group}(coeffB{group} ~= 0);
+    gofData{group} = allGOF{group}(allGOF{group} > 0 & allGOF{group} <= 1);
 
-   avgA(group) = mean(aData{group}, 'omitnan');
-   avgB(group) = mean(bData{group}, 'omitnan');
-   avgGOF(group) = mean(gofData{group}, 'omitnan');
+    avgA(group) = mean(aData{group}, 'omitnan');
+    avgB(group) = mean(bData{group}, 'omitnan');
+    avgGOF(group) = mean(gofData{group}, 'omitnan');
 
-   sdErrA(group) = std(aData{group})/sqrt(numel(aData{group}));
-   sdErrB(group) = std(bData{group})/sqrt(numel(bData{group}));
-   sdErrGOF(group) = std(gofData{group})/sqrt(numel(gofData{group}));
+    sdErrA(group) = std(aData{group})/sqrt(numel(aData{group}));
+    sdErrB(group) = std(bData{group})/sqrt(numel(bData{group}));
+    sdErrGOF(group) = std(gofData{group})/sqrt(numel(gofData{group}));
 
 end
 
-% figure(1);
-% subplot(1,2,1);
-% bar(avgA);
-% hold on;
-% errorbar(1:numel(avgA), avgA, sdErrA, 'k.', 'LineWidth', 1.5);
-% % Perform two-sample t-tests and print on the figure
-% myStat(aData, avgA, databaseDataLabel);
-% 
-% subplot(1,2,2);
-% bar(avgB);
-% hold on;
-% errorbar(1:numel(avgB), avgB, sdErrB, 'k.', 'LineWidth', 1.5);
-% hold off;
-% myStat(bData, avgB, databaseDataLabel);
+figure(1);
+set(gcf, 'Windowstyle', 'docked');
+subplot(1,2,1);
+bar(avgA);
+hold on;
+errorbar(1:numel(avgA), avgA, sdErrA, 'k.', 'LineWidth', 1.5);
+% Perform two-sample t-tests and print on the figure
+myStat(aData, avgA, databaseDataLabel);
+
+subplot(1,2,2);
+bar(avgB);
+hold on;
+errorbar(1:numel(avgB), avgB, sdErrB, 'k.', 'LineWidth', 1.5);
+hold off;
+myStat(bData, avgB, databaseDataLabel);
 
 figure(2);
+set(gcf, 'Windowstyle', 'docked');
 bar(avgGOF);
 hold on;
 errorbar(1:numel(avgGOF), avgGOF, sdErrGOF, 'k.', 'LineWidth', 1.5);
 hold off;
 myStat(gofData, avgGOF, databaseDataLabel);
-
-
-%% Description of myStat
-function myStat(coeffientData, averageData, databaseDataLabel)
-% Perform two-sample t-tests and print on the figure
-[~, pValue1] = ttest2(coeffientData{1}, coeffientData{2});
-[~, pValue2] = ttest2(coeffientData{1}, coeffientData{3});
-text(2, 0.9*max(averageData), ['p = ', num2str(pValue1)], 'Interpreter', 'latex', ...
-    'FontSize', 20, 'FontWeight', 'bold', 'HorizontalAlignment', 'center', ...
-    'Rotation', 45, 'Color', [0.8 0 0]);
-text(3, 0.9*max(averageData), ['p = ', num2str(pValue2)], 'Interpreter', 'latex', ...
-    'FontSize', 20, 'FontWeight', 'bold', 'HorizontalAlignment', 'center', ...
-    'Rotation', 45, 'Color', [0.8 0 0]);
-
-xticks(1:numel(databaseDataLabel));
-xticklabels(databaseDataLabel);
-xtickangle(45);
-text(3.5, max(averageData), sprintf('n_{Control} = %d\n n_{Stress} = %d\n n_{Stress2} = %d', ...
-    numel(coeffientData{1}), numel(coeffientData{2}), numel(coeffientData{3})), ...
-    'FontSize', 30, 'FontWeight', 'bold');
-end
